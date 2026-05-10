@@ -1,0 +1,13 @@
+{
+  "name": "newsirator",
+  "version": "1.0.0",
+  "description": "Automated Facebook Post Generator powered by AI",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}
