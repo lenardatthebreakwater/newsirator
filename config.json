@@ -4,5 +4,7 @@
   "country": "us",
   "pageId": "YOUR_FACEBOOK_PAGE_ID",
   "postsPerRun": 1,
-  "postTone": "informative but engaging, with emojis"
+  "postTone": "informative but engaging, with emojis",
+  "tokenEnvVar": "PAGE1_ACCESS_TOKEN",
+  "publishedLog": "published.json"
 }

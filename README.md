@@ -50,15 +50,34 @@ Go to your repository settings on GitHub: **Settings > Secrets and variables > A
 Add the following secrets:
 - `NEWS_API_KEY`: Your NewsAPI key.
 - `OPENROUTER_API_KEY`: Your OpenRouter key.
-- `FB_PAGE_ACCESS_TOKEN`: Your Facebook Page Access Token.
+- `PAGE1_ACCESS_TOKEN`: Your Facebook Page Access Token. *(Note: You can name this whatever you want, as long as it matches the `tokenEnvVar` inside your `config.json`!)*
 - `SITE_URL` (Optional): Your website URL (used for OpenRouter API attribution).
 
 ### 5. Enable Automation
-By default, the automation is disabled. To enable the daily cron job:
-1. Rename the folder `example-.github` to `.github`.
-2. Commit and push the changes.
+The workflow is scheduled to run Monday–Friday at 9:00 AM UTC. You can change this schedule (or manually run it) from the Actions tab in your repository, or by editing `.github/workflows/generate-post.yml`.
 
-The workflow is scheduled to run Monday–Friday at 9:00 AM UTC. You can change this schedule in `.github/workflows/generate-post.yml`.
+---
+
+## Multi-Page Support
+
+Newsirator supports publishing to multiple Facebook pages from a single repository using different configuration files.
+
+1. **Set your tokens in `.env` or GitHub Secrets:** (e.g., `PAGE1_TOKEN`, `PAGE2_TOKEN`).
+2. **Create a separate config file for each page:**
+   ```json
+   {
+     "topic": "artificial intelligence",
+     "pageId": "11111111",
+     "tokenEnvVar": "PAGE1_TOKEN",
+     "publishedLog": "page1-published.json"
+   }
+   ```
+3. **Run the script pointing to that specific config:**
+   ```bash
+   node index.js page1-config.json
+   ```
+   If no config is provided, it defaults to `config.json`.
+4. **Automate multiple pages:** Just duplicate your GitHub Actions workflow file (`.github/workflows/generate-post.yml`) for each page, and update the `run: node index.js [your-config.json]` command at the bottom.
 
 ---
 
