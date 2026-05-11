@@ -48,7 +48,7 @@ Requirements:
     };
 
     let retries = 0;
-    const MAX_RETRIES_PER_MODEL = 2; // Try each model up to 2 times before moving to the next
+    const MAX_RETRIES_PER_MODEL = 1; // Reduced to 1 to prevent burning through the 50/day limit!
 
     while (retries < MAX_RETRIES_PER_MODEL) {
       response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
