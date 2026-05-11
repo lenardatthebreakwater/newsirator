@@ -60,24 +60,25 @@ The workflow is scheduled to run Monday–Friday at 9:00 AM UTC. You can change 
 
 ## Multi-Page Support
 
-Newsirator supports publishing to multiple Facebook pages from a single repository using different configuration files.
+Newsirator supports publishing to multiple Facebook pages from a single repository. Whenever you want to automate a brand new page, there are exactly **3 things you need to duplicate and edit**:
 
-1. **Set your tokens in `.env` or GitHub Secrets:** (e.g., `PAGE1_TOKEN`, `PAGE2_TOKEN`).
-2. **Create a separate config file for each page:**
+1. **The Config File:** Create a new JSON file (e.g., `page2-config.json`) and edit the `pageId`, `tokenEnvVar`, and `publishedLog` properties.
    ```json
    {
-     "topic": "artificial intelligence",
-     "pageId": "11111111",
-     "tokenEnvVar": "PAGE1_TOKEN",
-     "publishedLog": "page1-published.json"
+     "pageId": "222222222",
+     "tokenEnvVar": "PAGE2_ACCESS_TOKEN",
+     "publishedLog": "page2-published.json"
    }
    ```
-3. **Run the script pointing to that specific config:**
-   ```bash
-   node index.js page1-config.json
+2. **The Environment Variable:** Add your new Facebook token (`PAGE2_ACCESS_TOKEN`) to your `.env` file (for local testing) AND to your GitHub Secrets (for automation).
+3. **The YAML File:** Copy `.github/workflows/generate-post.yml` into a new file (e.g., `page2-post.yml`). Open it and update the token and run command to point to Page 2:
+   ```yaml
+           env:
+             PAGE2_ACCESS_TOKEN: ${{ secrets.PAGE2_ACCESS_TOKEN }}
+           run: node index.js page2-config.json
    ```
-   If no config is provided, it defaults to `config.json`.
-4. **Automate multiple pages:** Just duplicate your GitHub Actions workflow file (`.github/workflows/generate-post.yml`) for each page, and update the `run: node index.js [your-config.json]` command at the bottom.
+
+Once you've done those 3 things, the new page will run automatically completely independent of the others!
 
 ---
 
