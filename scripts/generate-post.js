@@ -23,8 +23,8 @@ Requirements:
 
   const freeModels = [
     'meta-llama/llama-3.3-70b-instruct:free',
-    'google/gemini-2.0-pro-exp-02-05:free',
-    'mistralai/mistral-7b-instruct:free'
+    'google/gemma-4-31b-it:free',
+    'meta-llama/llama-3.2-3b-instruct:free'
   ];
 
   let response;
