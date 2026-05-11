@@ -51,7 +51,6 @@ Add the following secrets:
 - `NEWS_API_KEY`: Your NewsAPI key.
 - `OPENROUTER_API_KEY`: Your OpenRouter key.
 - `PAGE1_ACCESS_TOKEN`: Your Facebook Page Access Token. *(Note: You can name this whatever you want, as long as it matches the `tokenEnvVar` inside your `config.json`!)*
-- `SITE_URL` (Optional): Your website URL (used for OpenRouter API attribution).
 
 ### 5. Enable Automation
 The workflow is scheduled to run Monday–Friday at 9:00 AM UTC. You can change this schedule (or manually run it) from the Actions tab in your repository, or by editing `.github/workflows/generate-post.yml`.

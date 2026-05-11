@@ -39,9 +39,7 @@ Requirements:
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': process.env.SITE_URL || 'https://github.com/newsirator', // Optional, for OpenRouter rankings
-      'X-Title': 'Newsirator' // Optional, for OpenRouter rankings
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify(requestBody)
   });
