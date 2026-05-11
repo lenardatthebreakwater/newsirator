@@ -35,18 +35,48 @@ Requirements:
     ]
   };
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(requestBody)
-  });
+  let response;
+  let retries = 0;
+  const MAX_RETRIES = 3;
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`OpenRouter API Error: ${response.status} ${response.statusText} - ${errorText}`);
+  while (retries < MAX_RETRIES) {
+    response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (response.status === 429) {
+      const errorText = await response.text();
+      let waitSeconds = 30; // default fallback
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.error && errorJson.error.metadata && errorJson.error.metadata.retry_after_seconds) {
+          waitSeconds = Math.ceil(errorJson.error.metadata.retry_after_seconds) + 1;
+        }
+      } catch (e) {
+        // ignore JSON parse error
+      }
+      
+      console.log(`[!] OpenRouter rate limit hit. Waiting ${waitSeconds} seconds before retrying (Attempt ${retries + 1}/${MAX_RETRIES})...`);
+      await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
+      retries++;
+      continue;
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`OpenRouter API Error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    break; // Success! Break out of the retry loop.
+  }
+
+  if (!response || !response.ok) {
+    throw new Error('OpenRouter API failed after maximum retries due to rate limits.');
   }
 
   const data = await response.json();
