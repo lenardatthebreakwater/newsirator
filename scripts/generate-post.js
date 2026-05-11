@@ -21,62 +21,83 @@ Requirements:
 - DO NOT output any introductory or concluding text like "Here is your post:", just output the exact post content.
   `;
 
-  const requestBody = {
-    model: 'meta-llama/llama-3.3-70b-instruct:free',
-    messages: [
-      {
-        role: 'system',
-        content: 'You are an expert social media manager who writes highly engaging Facebook posts.'
-      },
-      {
-        role: 'user',
-        content: prompt
-      }
-    ]
-  };
+  const freeModels = [
+    'meta-llama/llama-3.3-70b-instruct:free',
+    'google/gemini-2.0-pro-exp-02-05:free',
+    'mistralai/mistral-7b-instruct:free'
+  ];
 
   let response;
-  let retries = 0;
-  const MAX_RETRIES = 3;
+  let success = false;
 
-  while (retries < MAX_RETRIES) {
-    response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    if (response.status === 429) {
-      const errorText = await response.text();
-      let waitSeconds = 30; // default fallback
-      try {
-        const errorJson = JSON.parse(errorText);
-        if (errorJson.error && errorJson.error.metadata && errorJson.error.metadata.retry_after_seconds) {
-          waitSeconds = Math.ceil(errorJson.error.metadata.retry_after_seconds) + 1;
+  for (const model of freeModels) {
+    console.log(`\nAttempting generation with model: ${model}`);
+    
+    const requestBody = {
+      model: model,
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert social media manager who writes highly engaging Facebook posts.'
+        },
+        {
+          role: 'user',
+          content: prompt
         }
-      } catch (e) {
-        // ignore JSON parse error
+      ]
+    };
+
+    let retries = 0;
+    const MAX_RETRIES_PER_MODEL = 2; // Try each model up to 2 times before moving to the next
+
+    while (retries < MAX_RETRIES_PER_MODEL) {
+      response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (response.status === 429) {
+        const errorText = await response.text();
+        let waitSeconds = 15; // default fallback
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (errorJson.error && errorJson.error.metadata && errorJson.error.metadata.retry_after_seconds) {
+            // Cap the wait time at 30 seconds so it doesn't hang forever
+            waitSeconds = Math.min(Math.ceil(errorJson.error.metadata.retry_after_seconds) + 1, 30);
+          }
+        } catch (e) {
+          // ignore JSON parse error
+        }
+        
+        console.log(`[!] ${model} rate limit hit. Waiting ${waitSeconds} seconds before retrying (Attempt ${retries + 1}/${MAX_RETRIES_PER_MODEL})...`);
+        await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
+        retries++;
+        continue;
       }
-      
-      console.log(`[!] OpenRouter rate limit hit. Waiting ${waitSeconds} seconds before retrying (Attempt ${retries + 1}/${MAX_RETRIES})...`);
-      await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
-      retries++;
-      continue;
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log(`[!] ${model} returned error: ${response.status} - ${errorText}`);
+        break; // If it's a 500 or 400 error, just skip to the next model
+      }
+
+      success = true;
+      break; // Success! Break out of the retry loop.
     }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`OpenRouter API Error: ${response.status} ${response.statusText} - ${errorText}`);
+    if (success) {
+      break; // Break out of the models loop, we got a good response!
+    } else {
+      console.log(`[!] Exhausted retries for ${model}. Moving to the next model...`);
     }
-
-    break; // Success! Break out of the retry loop.
   }
 
-  if (!response || !response.ok) {
-    throw new Error('OpenRouter API failed after maximum retries due to rate limits.');
+  if (!success || !response || !response.ok) {
+    throw new Error('OpenRouter API failed after trying all fallback models due to rate limits or errors.');
   }
 
   const data = await response.json();
