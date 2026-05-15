@@ -23,7 +23,7 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
 - "hashtags": An array of 1-3 relevant hashtags (without the # symbol in the string).`;
 
     const result = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash',
       contents: prompt,
       config: {
         responseMimeType: "application/json",
