@@ -13,9 +13,10 @@ export async function GET(request) {
     }
 
     const topic = process.env.TOPIC || 'general news';
+    const contentFocus = process.env.CONTENT_FOCUS ? ` ${process.env.CONTENT_FOCUS}` : '';
 
     // 2. AI Content Generation
-    const prompt = `Find a significant and engaging news update from the last 12 hours about ${topic}.
+    const prompt = `Find a significant, positive, and engaging news update from the last 12 hours about ${topic}.${contentFocus} Strictly ignore any negative news, lawsuits, controversies, or drama.
 Return a strict JSON response with no markdown formatting. It must contain EXACTLY these keys:
 - "summary": A 2-3 sentence engaging summary of the news, written for a Facebook post.
 - "sourceUrl": The URL of the news article.
@@ -51,6 +52,7 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
     const googleSearchCx = process.env.GOOGLE_SEARCH_ENGINE_ID;
     
     let imageUrl = '';
+    let imageError = null;
     
     if (googleSearchApiKey && googleSearchCx) {
       try {
@@ -66,13 +68,19 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
           const imgData = await imgResponse.json();
           if (imgData.items && imgData.items.length > 0) {
             imageUrl = imgData.items[0].link;
+          } else {
+            imageError = "No image items returned for query.";
           }
         } else {
-          console.error("Google Custom Search API error:", await imgResponse.text());
+          imageError = `Google API error: ${imgResponse.status} ${await imgResponse.text()}`;
+          console.error(imageError);
         }
       } catch (e) {
+        imageError = e.message;
         console.error("Failed to fetch image:", e);
       }
+    } else {
+      imageError = "Missing GOOGLE_SEARCH_API_KEY or GOOGLE_SEARCH_ENGINE_ID in environment.";
     }
 
     // 4. Facebook Publishing
@@ -119,7 +127,8 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
       success: true, 
       postId: fbData.id,
       content,
-      imageUrl
+      imageUrl,
+      ...(imageError && { imageError })
     });
 
   } catch (error) {
