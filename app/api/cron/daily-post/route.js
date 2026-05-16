@@ -26,7 +26,6 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
       model: 'gemini-2.5-flash',
       contents: prompt,
       config: {
-        responseMimeType: "application/json",
         tools: [{ googleSearch: {} }],
       }
     });
@@ -34,7 +33,8 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
     const aiResponseText = result.text;
     let content;
     try {
-      content = JSON.parse(aiResponseText);
+      const cleanJsonText = aiResponseText.replace(/```json\n?/gi, '').replace(/```\n?/g, '').trim();
+      content = JSON.parse(cleanJsonText);
     } catch (e) {
       console.error("Failed to parse AI response:", aiResponseText);
       throw new Error('AI did not return valid JSON');
