@@ -47,40 +47,52 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
       throw new Error('AI response missing required fields');
     }
 
-    // 3. Image Retrieval
-    const googleSearchApiKey = process.env.GOOGLE_SEARCH_API_KEY;
-    const googleSearchCx = process.env.GOOGLE_SEARCH_ENGINE_ID;
-    
+    // 3. Image Retrieval (Custom Web Scraper)
+    // Instead of using paid APIs, we fetch the source article and extract its featured image (og:image)
     let imageUrl = '';
     let imageError = null;
-    
-    if (googleSearchApiKey && googleSearchCx) {
-      try {
-        const searchUrl = new URL('https://customsearch.googleapis.com/customsearch/v1');
-        searchUrl.searchParams.append('q', searchQuery);
-        searchUrl.searchParams.append('searchType', 'image');
-        searchUrl.searchParams.append('imgSize', 'large');
-        searchUrl.searchParams.append('key', googleSearchApiKey);
-        searchUrl.searchParams.append('cx', googleSearchCx);
-        
-        const imgResponse = await fetch(searchUrl);
-        if (imgResponse.ok) {
-          const imgData = await imgResponse.json();
-          if (imgData.items && imgData.items.length > 0) {
-            imageUrl = imgData.items[0].link;
-          } else {
-            imageError = "No image items returned for query.";
-          }
-        } else {
-          imageError = `Google API error: ${imgResponse.status} ${await imgResponse.text()}`;
-          console.error(imageError);
+
+    try {
+      // Fetch the HTML of the news article using a standard User-Agent to avoid simple bot blocks
+      const articleResponse = await fetch(sourceUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
-      } catch (e) {
-        imageError = e.message;
-        console.error("Failed to fetch image:", e);
+      });
+      
+      if (articleResponse.ok) {
+        const html = await articleResponse.text();
+        
+        // Use Regex to find the <meta property="og:image" content="..."> tag
+        const ogImageMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) || 
+                             html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+                             
+        if (ogImageMatch && ogImageMatch[1]) {
+          imageUrl = ogImageMatch[1].replace(/&amp;/g, '&');
+        } else {
+          // Fallback to twitter:image
+          const twitterImageMatch = html.match(/<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i) ||
+                                    html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']twitter:image["']/i);
+          if (twitterImageMatch && twitterImageMatch[1]) {
+            imageUrl = twitterImageMatch[1].replace(/&amp;/g, '&');
+          } else {
+             imageError = "Could not find a featured image (og:image) in the article HTML.";
+          }
+        }
+
+        // Ensure the URL is absolute
+        if (imageUrl && !imageUrl.startsWith('http')) {
+          try {
+            const baseUrl = new URL(sourceUrl);
+            imageUrl = new URL(imageUrl, baseUrl.origin).toString();
+          } catch(e) {}
+        }
+      } else {
+        imageError = `Failed to fetch article to scrape image. Status: ${articleResponse.status}`;
       }
-    } else {
-      imageError = "Missing GOOGLE_SEARCH_API_KEY or GOOGLE_SEARCH_ENGINE_ID in environment.";
+    } catch (e) {
+      imageError = `Error scraping article for image: ${e.message}`;
+      console.error(imageError);
     }
 
     // 4. Facebook Publishing
