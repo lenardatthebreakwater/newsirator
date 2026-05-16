@@ -51,3 +51,15 @@ If you want to test the script on your machine before deploying:
 3. Fill in your `.env` file with the keys listed above.
 4. Run the development server: `npm run dev`
 5. Test the endpoint by sending a GET request to `http://localhost:3000/api/cron/daily-post` with your `Authorization` header (using Postman, curl, or a similar tool).
+
+---
+
+## Multi-Page Support
+
+Because Newsirator is 100% stateless, it is the perfect template to run multiple different Facebook pages from the exact same codebase!
+
+If you want to automate a brand new page (e.g., a K-Pop page), you don't need to change any code. Simply:
+1. Create a **new deployment** of this exact repository in Vercel.
+2. Change the environment variables in the new deployment to match your new page (`FACEBOOK_PAGE_ID`, `FACEBOOK_PAGE_ACCESS_TOKEN`, `TOPIC`, and `CONTENT_FOCUS`).
+3. You can safely reuse your exact same `GEMINI_API_KEY`, `SERPAPI_KEY`, and `CRON_SECRET`.
+4. Create a second task in `cron-job.org` pointing to your new deployment's URL.
