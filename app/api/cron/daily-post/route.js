@@ -19,7 +19,7 @@ export async function GET(request) {
     const prompt = `Find a significant, positive, and engaging news update from the last 12 hours about ${topic}.${contentFocus} Strictly ignore any negative news, lawsuits, controversies, or drama.
 Return a strict JSON response with no markdown formatting. It must contain EXACTLY these keys:
 - "summary": A 2-3 sentence engaging summary of the news, written for a Facebook post.
-- "sourceUrl": The URL of the news article.
+- "sourceUrl": The direct, original URL of the news article. DO NOT return a Google Search redirect link (like vertexaisearch.cloud.google.com).
 - "searchQuery": A 2-3 word search query to find a relevant image for this news.
 - "hashtags": An array of 1-3 relevant hashtags (without the # symbol in the string).`;
 
