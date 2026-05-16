@@ -7,9 +7,11 @@ It is built on **Next.js App Router**, designed to be deployed to **Vercel**, an
 ## How it works
 
 1. An external cron service (like cron-job.org) securely triggers the `/api/cron/daily-post` endpoint.
-2. The API uses **Gemini 1.5 Flash** with Google Search Grounding to find the latest positive, engaging news update based on your `TOPIC` and `CONTENT_FOCUS` environment variables.
-3. The API fetches the source article and uses a custom web scraper to extract the `og:image` (featured image) to use for the Facebook post.
-4. It publishes the generated text, hashtags, and the extracted image to your Facebook Page via the **Facebook Graph API** as a Photo post.
+2. The script fetches your latest posts from the Facebook Feed to use as a duplicate-prevention "bouncer" (so you don't need a database!).
+3. The API uses **Gemini 1.5 Flash** with Google Search Grounding to find the latest positive, engaging news update based on your `TOPIC` and `CONTENT_FOCUS` environment variables.
+4. The bouncer checks if the news URL is already on your Facebook page and aborts if it is a duplicate.
+5. The script uses **SerpApi** to fetch a high-quality Google Image for the news (with a custom `og:image` web scraper as a fallback).
+6. It publishes the generated text, hashtags, and the extracted image to your Facebook Page via the **Facebook Graph API** as a Photo post.
 
 ---
 
@@ -29,8 +31,7 @@ Add the following environment variables to your deployment (and your local `.env
 - `FACEBOOK_PAGE_ID`: The ID of the Facebook Page you are posting to.
 - `TOPIC`: The main topic you want news about (e.g., `roblox`, `kpop`, `artificial intelligence`).
 - `CONTENT_FOCUS`: (Optional) Specific instructions for the AI on what to focus on or ignore (e.g., `Specifically focus on new game updates and feature releases.`).
-
-*(Note: We no longer require the Google Custom Search API. The app uses a built-in `og:image` scraper to fetch images for free!)*
+- `SERPAPI_KEY`: (Optional) Your SerpApi key for Google Image Search. If left blank, the app gracefully falls back to a built-in `og:image` scraper.
 
 ### 3. Setup Automation (Cron Job)
 Because Next.js endpoints need an external trigger to run on a schedule:
