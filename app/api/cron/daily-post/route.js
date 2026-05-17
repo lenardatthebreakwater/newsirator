@@ -14,7 +14,7 @@ export async function GET(request) {
 
     const topic = process.env.TOPIC || 'general news';
     const contentFocus = process.env.CONTENT_FOCUS ? ` ${process.env.CONTENT_FOCUS}` : '';
-
+    
     // 2. Duplicate Prevention (Facebook Graph API)
     const pageId = process.env.FACEBOOK_PAGE_ID;
     const pageToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
@@ -23,20 +23,15 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Missing Facebook API credentials' }, { status: 500 });
     }
 
-    let recentUrls = [];
+    let recentPosts = [];
     try {
-      const fbFeedUrl = `https://graph.facebook.com/v25.0/${pageId}/feed?access_token=${pageToken}&limit=5&fields=message,link`;
+      const fbFeedUrl = `https://graph.facebook.com/v25.0/${pageId}/feed?access_token=${pageToken}&limit=5&fields=message`;
       const fbFeedResponse = await fetch(fbFeedUrl);
       if (fbFeedResponse.ok) {
         const feedData = await fbFeedResponse.json();
         if (feedData.data) {
           feedData.data.forEach(post => {
-            if (post.link) recentUrls.push(post.link);
-            if (post.message) {
-              // Extract any URLs present in the message body
-              const urls = post.message.match(/https?:\/\/[^\s]+/g);
-              if (urls) recentUrls.push(...urls);
-            }
+            if (post.message) recentPosts.push(post.message);
           });
         }
       }
@@ -44,12 +39,12 @@ export async function GET(request) {
       console.error("Failed to fetch recent Facebook posts:", e);
     }
 
-    const recentUrlsContext = recentUrls.length > 0
-      ? `\nDO NOT write about these exact URLs as we recently posted them:\n${recentUrls.join('\n')}`
+    const recentPostsContext = recentPosts.length > 0 
+      ? `\nDO NOT write about the exact same topics as our recent posts:\n${recentPosts.join('\n---\n')}` 
       : '';
 
     // 3. AI Content Generation
-    const prompt = `Find a significant, positive, and engaging news update from the last 12 hours about ${topic}.${contentFocus} Strictly ignore any negative news, lawsuits, controversies, or drama.${recentUrlsContext}
+    const prompt = `Find a significant, positive, and engaging news update from the last 12 hours about ${topic}.${contentFocus} Strictly ignore any negative news, lawsuits, controversies, or drama.${recentPostsContext}
 Return a strict JSON response with no markdown formatting. It must contain EXACTLY these keys:
 - "summary": A short and engaging summary of the news, written for a Facebook post.
 - "sourceUrl": The direct, original URL of the news article. DO NOT return a Google Search redirect link (like vertexaisearch.cloud.google.com).
@@ -80,12 +75,8 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
       throw new Error('AI response missing required fields');
     }
 
-    // Programmatic Duplicate Check: Abort if the URL is already in our recent Facebook posts
-    const isDuplicate = recentUrls.some(url => url.includes(sourceUrl) || sourceUrl.includes(url));
-    if (isDuplicate) {
-      console.log(`Duplicate detected: ${sourceUrl}. Aborting for the day.`);
-      return NextResponse.json({ success: false, message: 'Duplicate news found. Slow news day. Aborting.', sourceUrl });
-    }
+    // The programmatic URL-based duplicate check was removed because posts no longer contain URLs.
+    // Duplicate prevention is now entirely handled by passing recent posts context to the AI.
 
     // 4. Image Retrieval (SerpApi with Custom Web Scraper fallback)
     let imageUrl = '';
@@ -125,18 +116,18 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
           }
         });
-
+        
         if (articleResponse.ok) {
           const html = await articleResponse.text();
-
-          const ogImageMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) ||
-            html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
-
+          
+          const ogImageMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) || 
+                               html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+                               
           if (ogImageMatch && ogImageMatch[1]) {
             imageUrl = ogImageMatch[1].replace(/&amp;/g, '&');
           } else {
             const twitterImageMatch = html.match(/<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i) ||
-              html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']twitter:image["']/i);
+                                      html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']twitter:image["']/i);
             if (twitterImageMatch && twitterImageMatch[1]) {
               imageUrl = twitterImageMatch[1].replace(/&amp;/g, '&');
             } else {
@@ -148,7 +139,7 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
             try {
               const baseUrl = new URL(sourceUrl);
               imageUrl = new URL(imageUrl, baseUrl.origin).toString();
-            } catch (e) { }
+            } catch(e) {}
           }
         } else {
           imageError = `Failed to fetch article to scrape image. Status: ${articleResponse.status}`;
@@ -161,15 +152,15 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
 
     // 5. Facebook Publishing
     const formattedHashtags = (hashtags || []).map(tag => `#${tag.replace(/#/g, '')}`).join(' ');
-    const message = `${summary}\n\nRead the full story: ${sourceUrl}\n\n${formattedHashtags}`;
+    const message = `${summary}\n\n${formattedHashtags}`;
 
     let fbUrl = `https://graph.facebook.com/v25.0/${pageId}/feed`;
-
+    
     const fbBody = {
       message: message,
       access_token: pageToken,
     };
-
+    
     // If we have an image, post it as a Photo. Otherwise, post it as a standard text post to the Feed.
     if (imageUrl) {
       fbUrl = `https://graph.facebook.com/v25.0/${pageId}/photos`;
@@ -192,8 +183,8 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
 
     const fbData = await fbResponse.json();
 
-    return NextResponse.json({
-      success: true,
+    return NextResponse.json({ 
+      success: true, 
       postId: fbData.id,
       content,
       imageUrl,
@@ -203,7 +194,7 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
   } catch (error) {
     console.error('Cron job failed:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: error.message || 'Internal server error' }, 
       { status: 500 }
     );
   }
