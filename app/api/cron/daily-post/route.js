@@ -14,7 +14,7 @@ export async function GET(request) {
 
     const topic = process.env.TOPIC || 'general news';
     const contentFocus = process.env.CONTENT_FOCUS ? ` ${process.env.CONTENT_FOCUS}` : '';
-    
+
     // 2. Duplicate Prevention (Facebook Graph API)
     const pageId = process.env.FACEBOOK_PAGE_ID;
     const pageToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
@@ -44,14 +44,14 @@ export async function GET(request) {
       console.error("Failed to fetch recent Facebook posts:", e);
     }
 
-    const recentUrlsContext = recentUrls.length > 0 
-      ? `\nDO NOT write about these exact URLs as we recently posted them:\n${recentUrls.join('\n')}` 
+    const recentUrlsContext = recentUrls.length > 0
+      ? `\nDO NOT write about these exact URLs as we recently posted them:\n${recentUrls.join('\n')}`
       : '';
 
     // 3. AI Content Generation
     const prompt = `Find a significant, positive, and engaging news update from the last 12 hours about ${topic}.${contentFocus} Strictly ignore any negative news, lawsuits, controversies, or drama.${recentUrlsContext}
 Return a strict JSON response with no markdown formatting. It must contain EXACTLY these keys:
-- "summary": A 2-3 sentence engaging summary of the news, written for a Facebook post.
+- "summary": A short and engaging summary of the news, written for a Facebook post.
 - "sourceUrl": The direct, original URL of the news article. DO NOT return a Google Search redirect link (like vertexaisearch.cloud.google.com).
 - "searchQuery": A 2-3 word search query to find a relevant image for this news.
 - "hashtags": An array of 1-3 relevant hashtags (without the # symbol in the string).`;
@@ -105,16 +105,16 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
           if (serpData.images_results && serpData.images_results.length > 0) {
             imageUrl = serpData.images_results[0].original;
           } else {
-             imageError = "SerpApi returned no images.";
+            imageError = "SerpApi returned no images.";
           }
         } else {
-           imageError = `SerpApi failed: ${serpResponse.status}`;
-           console.error(imageError);
+          imageError = `SerpApi failed: ${serpResponse.status}`;
+          console.error(imageError);
         }
       }
-    } catch(e) {
-       imageError = `SerpApi error: ${e.message}`;
-       console.error(imageError);
+    } catch (e) {
+      imageError = `SerpApi error: ${e.message}`;
+      console.error(imageError);
     }
 
     // Fallback: If SerpApi didn't work or isn't configured, use the og:image scraper
@@ -125,22 +125,22 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
           }
         });
-        
+
         if (articleResponse.ok) {
           const html = await articleResponse.text();
-          
-          const ogImageMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) || 
-                               html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
-                               
+
+          const ogImageMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) ||
+            html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+
           if (ogImageMatch && ogImageMatch[1]) {
             imageUrl = ogImageMatch[1].replace(/&amp;/g, '&');
           } else {
             const twitterImageMatch = html.match(/<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i) ||
-                                      html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']twitter:image["']/i);
+              html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']twitter:image["']/i);
             if (twitterImageMatch && twitterImageMatch[1]) {
               imageUrl = twitterImageMatch[1].replace(/&amp;/g, '&');
             } else {
-               imageError = "Could not find a featured image in the article HTML either.";
+              imageError = "Could not find a featured image in the article HTML either.";
             }
           }
 
@@ -148,7 +148,7 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
             try {
               const baseUrl = new URL(sourceUrl);
               imageUrl = new URL(imageUrl, baseUrl.origin).toString();
-            } catch(e) {}
+            } catch (e) { }
           }
         } else {
           imageError = `Failed to fetch article to scrape image. Status: ${articleResponse.status}`;
@@ -164,12 +164,12 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
     const message = `${summary}\n\nRead the full story: ${sourceUrl}\n\n${formattedHashtags}`;
 
     let fbUrl = `https://graph.facebook.com/v25.0/${pageId}/feed`;
-    
+
     const fbBody = {
       message: message,
       access_token: pageToken,
     };
-    
+
     // If we have an image, post it as a Photo. Otherwise, post it as a standard text post to the Feed.
     if (imageUrl) {
       fbUrl = `https://graph.facebook.com/v25.0/${pageId}/photos`;
@@ -192,8 +192,8 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
 
     const fbData = await fbResponse.json();
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       postId: fbData.id,
       content,
       imageUrl,
@@ -203,7 +203,7 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
   } catch (error) {
     console.error('Cron job failed:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' }, 
+      { error: error.message || 'Internal server error' },
       { status: 500 }
     );
   }
