@@ -44,10 +44,23 @@ export async function GET(request) {
       : '';
 
     // 3. AI Content Generation
-    const prompt = `Find a significant, positive, and engaging news update from the last 12 hours about ${topic}.${contentFocus} Strictly ignore any negative news, lawsuits, controversies, or drama.${recentPostsContext}
-Return a strict JSON response with no markdown formatting. It must contain EXACTLY these keys:
-- "summary": A short and engaging summary of the news, written for a Facebook post.
-- "searchQuery": A 1-3 word broad search query for Google Images (just the name of the game, e.g., "Roblox Jujutsu Shenanigans").
+    const prompt = `Find a significant, positive, and engaging news update from the last 12 hours about ${topic}.${contentFocus}
+
+Rules:
+1. Only talk about real, verifiable events that are currently happening or have just launched (e.g., in-game events, major releases, or limited-time modes). Do NOT invent or combine events that do not exist.
+2. Ignore:
+   - Negative news, lawsuits, controversies, or drama.
+   - Behind-the-scenes or admin-abuse issues.
+   - Very dry patch notes or technical details; focus only on the overview and why it’s fun or exciting.
+3. If you cannot find a real, recent update that matches these rules, return a safe fallback instead of guessing:
+   - "summary": "No major new event or update found in the last 12 hours."
+   - "searchQuery": "${topic}"
+   - "hashtags": ["${topic.split(' ').slice(0, 2).join('') || 'gaming'}","news","update"]
+${recentPostsContext}
+
+Return a strict JSON response with no markdown formatting, containing EXACTLY these keys:
+- "summary": A short and engaging summary written as a Facebook post (80-120 words), clearly naming the topic and the event/update.
+- "searchQuery": A 1-3 word broad search query for Google Images (just the exact name of the experience or event).
 - "hashtags": An array of 1-3 relevant hashtags (without the # symbol in the string).`;
 
     const result = await ai.models.generateContent({
