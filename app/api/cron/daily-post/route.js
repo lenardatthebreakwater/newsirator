@@ -14,7 +14,7 @@ export async function GET(request) {
 
     const topic = process.env.TOPIC || 'general news';
     const contentFocus = process.env.CONTENT_FOCUS ? ` ${process.env.CONTENT_FOCUS}` : '';
-    
+
     // 2. Duplicate Prevention (Facebook Graph API)
     const pageId = process.env.FACEBOOK_PAGE_ID;
     const pageToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
@@ -39,8 +39,8 @@ export async function GET(request) {
       console.error("Failed to fetch recent Facebook posts:", e);
     }
 
-    const recentPostsContext = recentPosts.length > 0 
-      ? `\nDO NOT write about the exact same topics as our recent posts:\n${recentPosts.join('\n---\n')}` 
+    const recentPostsContext = recentPosts.length > 0
+      ? `\nDO NOT write about the exact same topics as our recent posts:\n${recentPosts.join('\n---\n')}`
       : '';
 
     // 3. AI Content Generation
@@ -116,18 +116,18 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
           }
         });
-        
+
         if (articleResponse.ok) {
           const html = await articleResponse.text();
-          
-          const ogImageMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) || 
-                               html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
-                               
+
+          const ogImageMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) ||
+            html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+
           if (ogImageMatch && ogImageMatch[1]) {
             imageUrl = ogImageMatch[1].replace(/&amp;/g, '&');
           } else {
             const twitterImageMatch = html.match(/<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i) ||
-                                      html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']twitter:image["']/i);
+              html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']twitter:image["']/i);
             if (twitterImageMatch && twitterImageMatch[1]) {
               imageUrl = twitterImageMatch[1].replace(/&amp;/g, '&');
             } else {
@@ -139,7 +139,7 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
             try {
               const baseUrl = new URL(sourceUrl);
               imageUrl = new URL(imageUrl, baseUrl.origin).toString();
-            } catch(e) {}
+            } catch (e) { }
           }
         } else {
           imageError = `Failed to fetch article to scrape image. Status: ${articleResponse.status}`;
@@ -155,12 +155,12 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
     const message = `${summary}\n\n${formattedHashtags}`;
 
     let fbUrl = `https://graph.facebook.com/v25.0/${pageId}/feed`;
-    
+
     const fbBody = {
       message: message,
       access_token: pageToken,
     };
-    
+
     // If we have an image, post it as a Photo. Otherwise, post it as a standard text post to the Feed.
     if (imageUrl) {
       fbUrl = `https://graph.facebook.com/v25.0/${pageId}/photos`;
@@ -183,8 +183,8 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
 
     const fbData = await fbResponse.json();
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       postId: fbData.id,
       content,
       imageUrl,
@@ -194,7 +194,7 @@ Return a strict JSON response with no markdown formatting. It must contain EXACT
   } catch (error) {
     console.error('Cron job failed:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' }, 
+      { error: error.message || 'Internal server error' },
       { status: 500 }
     );
   }
